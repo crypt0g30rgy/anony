@@ -33,7 +33,6 @@ app.config['SECRET_KEY'] = os.getenv(
 mail = Mail(app)
 db = SQLAlchemy(app)
 swagger = Swagger(app)
-login_manager = LoginManager()
 
 # Flask-Security setup using the User and Role classes
 class User(db.Model, UserMixin):
@@ -107,7 +106,7 @@ def hello():
 
 
 @app.route('/admin')
-@login_required
+# @login_required
 def admin():
     """
     Admin Page.
@@ -142,7 +141,6 @@ def get_all_feedbacks():
             'id': feedback.id,
             'email': feedback.email,
             'feedback': feedback.feedback,
-            'submitted': feedback.submitted,
         }
         for feedback in all_feedbacks
     ]
@@ -151,7 +149,7 @@ def get_all_feedbacks():
 
 
 @app.route('/api/send_invite', methods=['POST'])
-@login_required  # Protect the endpoint with login requirement
+# @login_required  # Protect the endpoint with login requirement
 def send_invite():
     """
     Send Invite API.
