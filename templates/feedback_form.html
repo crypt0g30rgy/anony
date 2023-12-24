@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonymous Feedback Submission</title>
+</head>
+<body>
+    <h1>Anonymous Feedback Submission</h1>
+
+    <form id="feedbackForm">
+        <label for="feedback">Feedback:</label>
+        <textarea name="feedback" id="feedback" rows="4" cols="50" required></textarea>
+
+        <button type="button" onclick="submitFeedback()">Submit Feedback</button>
+    </form>
+
+    <script>
+        function submitFeedback() {
+            var feedback = document.getElementById('feedback').value;
+
+            // Get UUID from query parameters
+            var urlParams = new URLSearchParams(window.location.search);
+            var uuid = urlParams.get('uuid');
+
+            if (!uuid) {
+                alert('UUID not found in the query parameters.');
+                return;
+            }
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/submit_feedback', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200) {
+                        alert('Feedback submitted successfully!');
+                    } else {
+                        alert('Error submitting feedback. Please check the console for details.');
+                        console.error(xhr.responseText);
+                    }
+                }
+            };
+
+            var data = {
+                uuid: uuid,
+                feedback: feedback
+            };
+
+            xhr.send(JSON.stringify(data));
+        }
+    </script>
+</body>
+</html>

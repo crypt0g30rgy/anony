@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Page</title>
+</head>
+<body>
+    <h1>Admin Page</h1>
+    <form id="inviteForm">
+        <label for="emails">Emails (comma-separated):</label>
+        <input type="text" name="emails" id="emails" required>
+        <button type="button" onclick="sendInvites()">Send Invites</button>
+    </form>
+
+    <script>
+        function sendInvites() {
+            var emails = document.getElementById('emails').value;
+            var emailsArray = emails.split(',').map(function(email) {
+                return email.trim();
+            });
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/send_invite', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200) {
+                        alert('Invites sent successfully!');
+                    } else {
+                        alert('Error sending invites. Please check the console for details.');
+                        console.error(xhr.responseText);
+                    }
+                }
+            };
+
+            var data = {
+                emails: emailsArray
+            };
+
+            xhr.send(JSON.stringify(data));
+        }
+    </script>
+</body>
+</html>
