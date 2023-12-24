@@ -27,11 +27,13 @@ app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///feedback.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')  # Set a secret key for security
+app.config['SECRET_KEY'] = os.getenv(
+    'SECRET_KEY')  # Set a secret key for security
 
 mail = Mail(app)
 db = SQLAlchemy(app)
 swagger = Swagger(app)
+login_manager = LoginManager()
 
 # Flask-Security setup using the User and Role classes
 class User(db.Model, UserMixin):
@@ -41,15 +43,18 @@ class User(db.Model, UserMixin):
     active = db.Column(db.Boolean())
     roles = db.relationship('Role', secondary='user_roles')
 
+
 class Role(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=True)
     description = db.Column(db.String(255))
 
+
 class UserRoles(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
+
 
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 security = Security(app, user_datastore)
@@ -57,12 +62,15 @@ security = Security(app, user_datastore)
 
 class Feedback(db.Model):
     id = db.Column(db.String(36), primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    email = db.Column(db.String(120))
+    submitted = db.Column(db.Boolean, default=False)  # Added boolean flag
+
 
 class UserFeedback(db.Model):
     id = db.Column(db.String(36), primary_key=True)
     email = db.Column(db.String(120), nullable=False)
     feedback = db.Column(db.Text, nullable=False)
+
 
 def is_valid_uuid(uuid_str):
     try:
@@ -70,6 +78,7 @@ def is_valid_uuid(uuid_str):
         return True
     except ValueError:
         return False
+
 
 @app.route('/')
 def index():
@@ -81,6 +90,7 @@ def index():
         description: Returns the welcome message
     """
     return render_template('index.html')
+
 
 @app.route('/api/hello', methods=['GET'])
 def hello():
@@ -94,6 +104,8 @@ def hello():
     return jsonify(message="Hello, World!")
 
 # Admin Page
+
+
 @app.route('/admin')
 @login_required
 def admin():
@@ -105,6 +117,38 @@ def admin():
         description: Renders the admin page.
     """
     return render_template('admin.html')
+
+
+@app.route('/api/all_feedbacks', methods=['GET'])
+# @login_required
+def get_all_feedbacks():
+    """
+    Fetch All Feedbacks API.
+    ---
+    responses:
+      200:
+        description: Returns a list of all feedback entries
+    """
+    # Check if the user has permission to access this endpoint (optional)
+    # if not user_has_permission(current_user):
+    #     return jsonify(message="You do not have permission to access this endpoint."), 403
+
+    # Fetch all feedback entries from the database
+    all_feedbacks = UserFeedback.query.all()
+
+    # Convert feedback entries to a list of dictionaries
+    feedback_list = [
+        {
+            'id': feedback.id,
+            'email': feedback.email,
+            'feedback': feedback.feedback,
+            'submitted': feedback.submitted,
+        }
+        for feedback in all_feedbacks
+    ]
+
+    return jsonify(feedbacks=feedback_list)
+
 
 @app.route('/api/send_invite', methods=['POST'])
 @login_required  # Protect the endpoint with login requirement
@@ -162,9 +206,11 @@ def send_invite():
                 mail.send(msg)
                 success_messages.append(f"Invite sent successfully to {email}")
             except Exception as e:
-                error_messages.append(f"Error sending invite to {email}: {str(e)}")
+                error_messages.append(
+                    f"Error sending invite to {email}: {str(e)}")
 
     return jsonify(success=success_messages, error=error_messages)
+
 
 @app.route('/api/submit_feedback', methods=['POST'])
 def submit_feedback():
@@ -193,7 +239,7 @@ def submit_feedback():
         return jsonify(message="Invalid or missing 'uuid' or 'feedback' in the JSON payload."), 400
 
     uuid_value = data['uuid']
-    feedback = data['feedback']
+    feedback_text = data['feedback']
 
     # Validate UUID
     if not is_valid_uuid(uuid_value):
@@ -205,16 +251,25 @@ def submit_feedback():
     if not feedback_entry:
         return jsonify(message=f"UUID '{uuid_value}' not found."), 404
 
+    # Check if feedback has already been submitted
+    if feedback_entry.submitted:
+        return jsonify(message="Feedback already submitted for this UUID."), 400
+
     # Validate Email
     if not validate_email(feedback_entry.email):
         return jsonify(message="Invalid email address."), 400
 
     # Save feedback along with the associated email in the database
-    user_feedback = UserFeedback(id=uuid_value, email=feedback_entry.email, feedback=feedback)
+    user_feedback = UserFeedback(
+        id=uuid_value, email=feedback_entry.email, feedback=feedback_text)
     db.session.add(user_feedback)
+
+    # Update the submitted field for the feedback_entry
+    feedback_entry.submitted = True
     db.session.commit()
 
     return jsonify(message="Feedback submitted successfully!")
+
 
 @app.route('/feedback_form')
 def feedback_form():
@@ -231,6 +286,7 @@ def feedback_form():
         return jsonify(message="UUID not found in the query parameters."), 400
 
     return render_template('feedback_form.html')
+
 
 if __name__ == '__main__':
     with app.app_context():

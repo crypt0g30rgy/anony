@@ -79,6 +79,10 @@ A simple Flask web application for collecting anonymous feedback.
 
 For more detailed API documentation, refer to the Swagger documentation.
 
+## Contributing
+
+If you would like to contribute or add/request a feature to this project, please do.
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
